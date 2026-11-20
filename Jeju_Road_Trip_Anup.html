@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jeju Road Trip for Anup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,750&family=Source+Sans+3:wght@400;600&family=Noto+Sans+KR:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: sticky island map on the left, day-by-day stops on the right; stacks on phones */
+  --bg:#f4f6f3; --surface:#ffffff; --ink:#1d2523; --muted:#5d6b67; --line:#d9e0dc;
+  --sea:#d7e9ea; --land:#e9efe2; --landline:#9fb3a6; --accent:#e0a800;
+  --d1:#1f7a8a; --d2:#d97b2f; --d3:#7a45a0; --d4:#c43f5a;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Source Sans 3", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121716; --surface:#1a2120; --ink:#e7ecea; --muted:#9aa8a3; --line:#2c3633;
+    --sea:#14282b; --land:#26302b; --landline:#4b5e55; --accent:#f2c230;
+    --d1:#3fb0c2; --d2:#f0954a; --d3:#b07ad6; --d4:#ec6b86; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121716; --surface:#1a2120; --ink:#e7ecea; --muted:#9aa8a3; --line:#2c3633;
+  --sea:#14282b; --land:#26302b; --landline:#4b5e55; --accent:#f2c230;
+  --d1:#3fb0c2; --d2:#f0954a; --d3:#b07ad6; --d4:#ec6b86; color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--body)}
+a{color:inherit}
+a:focus-visible,.pin:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto;padding:28px 20px 48px}
+.top h1{font:750 clamp(28px,4vw,44px)/1.05 var(--display);margin:0 0 8px;text-wrap:balance;letter-spacing:-.01em}
+.top p{margin:0;color:var(--muted);max-width:70ch}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;padding:0;list-style:none}
+.facts li{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px}
+.grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px;margin-top:24px;align-items:start}
+.mapcard{position:sticky;top:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
+#map{width:100%;height:auto;display:block;border-radius:10px}
+.mapscroll{overflow-x:auto;border-radius:10px}
+@media (max-width:600px){#map{min-width:640px}}
+.sea{fill:var(--sea)} .land{fill:var(--land);stroke:var(--landline);stroke-width:1.2;stroke-linejoin:round}
+.peak{fill:var(--landline);opacity:.7}
+.lm{font:600 17px var(--body);fill:var(--muted);letter-spacing:.02em}
+.route{fill:none;stroke-width:3.5;stroke-dasharray:2 6;stroke-linecap:round;opacity:.85}
+.route.d1{stroke:var(--d1)} .route.d2{stroke:var(--d2)} .route.d3{stroke:var(--d3)} .route.d4{stroke:var(--d4)}
+.pin{cursor:pointer}
+.pin circle,.pin rect{stroke:var(--surface);stroke-width:2}
+.pin text{font:700 15px var(--body);fill:#fff;pointer-events:none}
+.pin.d1 circle,.pin.hotel.d1 rect{fill:var(--d1)} .pin.d2 circle,.pin.hotel.d2 rect{fill:var(--d2)}
+.pin.d3 circle,.pin.hotel.d3 rect{fill:var(--d3)} .pin.d4 circle{fill:var(--d4)}
+.pin.opt circle{fill:var(--accent)} .pin.opt text{fill:#1d2523;font-size:13px}
+.pin.dim,.route.dim{opacity:.12}
+.pin.hl circle,.pin.hl rect{stroke:var(--accent);stroke-width:3.5}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.filters button{font:600 14px var(--body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.filters .sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-top:8px}
+.day{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 8px;margin-bottom:18px}
+.day-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.day-h h2{font:650 21px/1.2 var(--display);margin:0;text-wrap:balance}
+.dlabel{font:700 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color:#fff;border-radius:6px;padding:3px 8px}
+.dlabel.d1,.num.d1,.hbadge.d1,.sw.d1{background:var(--d1)} .dlabel.d2,.num.d2,.hbadge.d2,.sw.d2{background:var(--d2)}
+.dlabel.d3,.num.d3,.hbadge.d3,.sw.d3{background:var(--d3)} .dlabel.d4,.num.d4,.hbadge.d4,.sw.d4{background:var(--d4)}
+.stops{list-style:none;margin:0;padding:0}
+.stop{display:grid;grid-template-columns:30px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line);scroll-margin-top:16px}
+.stop:first-child{border-top:0}
+.stop.hl{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 16%,transparent),transparent);border-radius:8px}
+.num{width:28px;height:28px;border-radius:50%;color:#fff;font:700 13px/28px var(--body);text-align:center}
+.row1{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.time{font-variant-numeric:tabular-nums;font-weight:600;color:var(--muted)}
+.kind{border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--muted)}
+.kind.k-food{border-color:var(--d1);color:var(--d1)} .kind.k-sweet{border-color:var(--accent);color:var(--ink)}
+.veg{background:color-mix(in srgb,#3c9a5f 16%,transparent);color:#2f7d4c;border-radius:999px;padding:0 8px;font-weight:600}
+:root[data-theme="dark"] .veg{color:#7fd39d}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .veg{color:#7fd39d}}
+.stop h3{font:650 17px/1.3 var(--body);margin:4px 0 2px}
+.ko{font-family:"Noto Sans KR",var(--body);font-weight:400;color:var(--muted);font-size:.9em}
+.stop p{margin:0;max-width:65ch}
+.addr{font-size:13px;color:var(--muted);margin-top:2px}
+.links{display:flex;gap:12px;margin-top:6px;font-size:14px;font-weight:600}
+.links a{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
+.stay{border-top:2px dashed var(--line);margin-top:4px;padding:12px 0 10px;scroll-margin-top:16px}
+.stay-h{font-weight:700;display:flex;align-items:center;gap:8px}
+.hbadge{display:inline-block;width:22px;height:22px;border-radius:5px;color:#fff;font:700 12px/22px var(--body);text-align:center}
+.stay ul{margin:6px 0 0;padding-left:20px} .stay li{margin:6px 0} .stay a{font-size:14px;font-weight:600}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:8px}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.note h2{font:650 18px/1.25 var(--display);margin:0 0 8px}
+.note ul{margin:0;padding-left:18px} .note li{margin:4px 0}
+.phrase{font-family:"Noto Sans KR",var(--body);font-size:18px;line-height:1.5;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0}
+.copy{font:600 14px var(--body);border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:8px;padding:6px 12px;cursor:pointer}
+.startday{margin-top:8px;margin-bottom:16px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);border-top:0}
+.ok,.mid,.bad{display:inline-block;font-weight:700;font-size:12px;border-radius:999px;padding:1px 8px;margin-right:6px;color:#fff}
+.ok{background:#2f8a55}.mid{background:#b07a00}.bad{background:#b8443c}
+@media print{
+  body{background:#fff}
+  .wrap{padding:0 6mm}
+  .grid{grid-template-columns:1fr}
+  .mapcard{position:static;break-inside:avoid}
+  .filters{display:none}
+  .mapscroll{overflow:visible} #map{min-width:0}
+  .stop,.stay,.note,.startday tr{break-inside:avoid}
+  .day{break-inside:auto}
+  .copy{display:none}
+  a{color:inherit}
+}
+.foot{color:var(--muted);font-size:13px;margin-top:24px;max-width:80ch}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}.mapcard{position:static}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+html{scroll-behavior:smooth}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Jeju road trip · 4 days in March</h1>
+    <p>A self-drive loop for Anup and friends' families: west coast, south coast, east coast, then back to the airport for Busan. Every meal stop is vegan or has clearly vegan dishes; cheese pizza and ice cream breaks are included. Tap a number on the map to jump to that stop.</p>
+    <ul class="facts">
+      <li>4 days · 3 nights</li><li>~250 km of driving in total</li><li>Rental car from Jeju Airport</li><li>Canola & cherry blossoms: mid–late March</li>
+    </ul>
+  </div>
+
+  <div class="grid">
+    <div class="mapcard">
+      <div class="filters" role="group" aria-label="Show day">
+        <button type="button" data-f="all" aria-pressed="true">All days</button>
+        <button type="button" data-f="d1" aria-pressed="false"><span class="sw d1"></span>Day 1</button>
+        <button type="button" data-f="d2" aria-pressed="false"><span class="sw d2"></span>Day 2</button>
+        <button type="button" data-f="d3" aria-pressed="false"><span class="sw d3"></span>Day 3</button>
+        <button type="button" data-f="d4" aria-pressed="false"><span class="sw d4"></span>Day 4</button>
+      </div>
+      <div class="mapscroll"><svg viewBox="0 0 923 572" role="img" aria-label="Map of Jeju Island with the 4-day route" id="map">
+<rect class="sea" x="0" y="0" width="923" height="572"/>
+<polygon class="land" points="163.1,541.8 163.3,542.7 166.5,543.4 167.6,546.2 171.0,548.8 172.0,553.6 170.7,554.4 168.4,553.3 167.9,556.1 164.0,559.7 163.8,560.8 161.0,561.6 158.2,554.7 152.9,551.9 154.1,548.9 159.3,544.4 159.6,542.8 163.1,541.8"/>
+<polygon class="land" points="473.1,476.8 477.4,477.6 478.2,478.5 477.9,480.1 473.2,480.1 471.8,478.3 473.1,476.8"/>
+<polygon class="land" points="35.8,367.9 37.9,370.8 35.4,370.3 33.9,373.8 33.3,372.6 28.7,373.1 27.3,370.7 28.1,369.7 31.0,369.8 31.7,368.2 35.8,367.9"/>
+<polygon class="land" points="115.6,242.2 118.8,243.0 121.1,245.4 119.7,250.4 120.2,252.1 118.7,252.9 116.5,252.1 113.4,252.7 110.4,251.0 110.3,248.7 109.5,248.7 111.4,243.3 115.6,242.2"/>
+<polygon class="land" points="888.2,98.4 889.0,100.7 892.3,102.2 891.5,103.3 892.0,105.2 893.6,105.0 895.5,106.9 895.3,109.0 892.1,110.2 890.8,112.4 891.9,114.9 899.4,112.1 900.6,110.1 904.0,110.7 906.7,113.2 906.5,116.8 901.3,115.4 899.9,117.0 902.3,120.9 901.7,121.4 902.4,122.9 902.1,125.7 904.8,128.5 904.4,130.8 905.2,133.2 903.1,135.8 900.5,135.4 902.3,140.8 900.0,144.5 897.2,145.3 891.8,140.8 889.7,142.9 883.9,141.1 881.9,142.5 883.1,139.6 879.7,140.3 875.0,137.4 876.5,134.9 874.6,128.1 872.6,125.1 872.8,122.2 875.0,120.3 872.6,119.4 874.8,118.6 874.6,116.8 876.4,114.2 877.8,113.9 879.2,111.9 881.1,111.8 880.1,110.1 881.4,107.2 879.7,106.4 880.2,103.8 879.3,102.2 882.3,100.8 883.4,98.9 888.2,98.4"/>
+<polygon class="land" points="702.7,45.8 717.2,54.6 720.1,59.3 723.2,58.8 725.0,55.2 734.3,56.0 738.4,51.2 753.0,54.7 752.4,60.5 755.7,66.8 754.1,71.2 758.8,75.9 757.8,79.2 761.9,77.9 765.3,82.7 767.7,81.8 767.7,87.4 778.9,87.6 778.5,92.2 785.6,92.5 784.3,96.9 785.7,98.0 791.7,98.0 794.3,91.8 799.5,90.9 800.8,93.0 810.6,92.2 812.7,95.4 821.4,94.4 826.6,99.3 832.5,98.0 833.2,103.3 837.4,104.5 835.6,108.1 831.3,109.0 833.8,111.9 828.9,116.3 837.4,116.3 844.1,120.8 846.3,129.2 841.6,140.7 842.9,143.8 847.1,143.8 848.3,147.8 846.4,149.9 840.6,148.0 836.8,149.6 834.3,147.6 831.6,154.7 834.0,155.8 832.8,157.1 835.9,159.1 839.4,157.0 844.1,166.0 843.6,161.8 847.8,163.3 845.5,164.0 846.6,165.5 850.2,163.1 852.3,164.8 851.1,169.7 858.8,161.8 855.3,168.4 859.1,170.1 859.5,164.3 867.1,164.3 867.7,159.5 867.2,167.0 869.9,171.6 869.6,175.0 871.9,179.1 876.8,180.2 878.8,184.9 880.7,184.8 879.4,187.6 872.6,189.1 865.7,182.2 861.7,184.0 861.2,189.4 854.1,196.6 856.7,197.5 856.4,200.3 853.5,200.4 853.0,203.1 856.4,203.3 854.7,209.3 856.2,213.4 860.3,213.0 868.6,219.6 867.2,224.7 863.5,229.7 859.6,229.5 852.7,224.3 855.7,220.0 853.8,215.0 847.0,215.6 849.6,223.3 842.1,233.8 842.2,240.5 838.9,243.6 838.6,249.6 833.0,254.3 835.6,254.9 834.5,257.0 837.5,260.9 836.9,269.4 808.8,280.3 810.5,280.8 810.5,284.4 801.1,294.4 800.9,302.0 795.5,304.3 797.4,306.2 795.8,308.0 797.7,315.3 790.8,325.1 787.4,325.8 786.5,330.6 784.0,331.0 782.4,333.8 784.9,333.1 783.6,337.2 780.2,336.6 777.7,340.7 774.2,339.6 773.2,342.9 770.3,343.2 769.4,349.8 772.9,352.7 773.0,349.9 776.0,353.2 774.0,356.4 774.5,359.9 770.1,360.8 766.2,367.5 761.0,370.7 760.2,375.0 748.6,379.0 744.7,378.5 744.0,375.8 739.2,376.4 735.5,378.5 736.6,381.3 732.4,383.4 727.8,379.3 721.7,382.7 716.8,379.5 714.2,382.4 708.8,377.6 700.1,376.7 694.6,384.6 688.2,387.3 687.1,397.0 682.8,396.2 677.8,402.3 671.8,403.4 668.8,411.0 658.5,414.9 652.5,409.3 651.1,412.6 642.5,412.8 639.9,415.9 638.7,413.8 636.0,417.3 631.7,416.4 615.7,422.9 599.0,424.8 598.3,422.8 594.6,422.4 593.1,427.4 586.4,422.4 580.0,423.3 575.9,427.1 579.0,423.5 577.1,418.2 573.5,418.2 575.7,425.3 572.9,423.7 571.6,426.5 567.4,423.5 565.2,427.1 563.4,425.2 557.8,427.1 555.0,430.5 556.2,433.5 553.4,434.6 554.0,439.8 549.9,439.9 545.3,444.4 541.6,443.2 540.0,447.3 536.8,446.0 534.3,451.5 532.6,448.7 532.5,457.2 530.4,460.9 523.1,460.9 519.8,465.1 516.9,463.0 510.5,466.6 503.8,464.6 499.7,457.6 496.2,456.2 492.2,458.9 487.6,455.5 480.0,456.7 478.6,460.8 476.6,460.6 480.1,464.9 474.9,467.2 476.7,466.3 469.6,460.9 470.0,457.2 468.1,464.9 459.0,460.0 456.0,464.8 453.6,462.5 450.6,463.7 447.6,460.4 441.7,464.6 427.3,460.5 420.9,471.0 414.7,475.0 402.5,477.1 401.1,474.1 392.9,474.1 387.8,478.4 382.5,479.2 382.9,483.4 379.7,484.8 373.6,483.6 370.6,478.4 363.6,473.7 361.8,464.9 356.8,461.5 346.6,464.2 345.1,467.2 341.0,465.6 337.6,467.6 336.8,471.4 333.5,471.9 324.2,466.3 319.2,459.7 310.3,456.2 302.3,458.3 302.3,460.5 297.0,461.6 282.7,472.2 278.2,469.8 277.5,473.8 274.6,472.2 267.0,475.7 264.9,472.7 260.2,471.8 258.0,466.1 257.4,468.9 254.4,468.5 253.8,465.8 246.7,468.6 241.4,466.1 234.6,466.3 228.6,469.0 231.6,466.9 228.3,466.3 229.8,463.0 222.3,461.0 211.7,465.3 209.6,467.6 209.2,472.3 206.1,470.9 203.1,477.8 199.8,478.9 201.6,477.5 199.8,476.2 199.2,478.4 195.0,478.4 188.1,486.3 190.1,488.8 183.6,506.1 187.0,508.9 188.5,515.6 182.3,519.3 178.2,516.6 176.8,511.9 171.3,514.4 169.4,512.3 168.0,517.7 162.9,519.8 152.6,515.0 150.8,511.3 151.9,505.8 154.5,505.5 153.1,500.0 147.9,499.0 146.8,502.9 142.4,494.5 138.8,495.7 135.6,485.8 129.3,483.2 129.3,479.6 124.2,476.5 122.1,468.4 116.7,466.9 115.5,463.0 107.0,458.2 99.9,460.4 89.1,455.2 77.8,445.6 78.5,443.7 72.2,441.2 65.9,434.7 63.6,426.5 54.5,418.0 53.2,408.6 45.3,404.0 43.9,392.9 50.7,386.3 46.9,374.1 49.1,372.0 51.1,361.8 49.8,357.1 45.8,354.8 47.0,344.8 44.3,343.2 44.6,336.6 50.2,334.1 49.5,330.6 52.3,326.3 59.9,323.9 61.8,325.9 65.0,325.0 62.9,323.1 65.5,317.6 64.5,310.8 73.2,303.9 87.0,301.1 91.7,296.4 92.5,292.4 103.4,284.9 99.5,281.4 109.0,274.1 110.5,269.2 115.3,270.0 114.4,268.0 118.4,265.9 122.6,271.0 124.9,263.8 130.3,263.5 129.5,257.0 133.9,254.9 139.6,255.5 138.8,250.7 140.4,246.6 147.2,244.0 143.9,242.2 143.1,238.0 146.1,241.8 150.5,236.6 153.6,237.4 150.3,229.2 148.4,236.5 142.3,236.7 147.0,236.0 148.3,224.7 153.0,224.3 150.7,220.7 152.4,218.7 150.6,214.1 152.3,210.4 160.9,208.3 164.6,210.9 165.9,205.5 169.1,201.9 174.8,203.1 174.9,200.5 177.5,199.6 182.1,202.3 183.3,197.5 184.7,197.7 184.7,201.9 185.8,199.1 192.5,197.7 199.5,191.0 198.6,189.4 203.9,181.5 201.6,173.9 207.1,169.5 214.5,172.3 222.2,168.8 224.2,171.6 226.7,169.9 230.7,173.1 242.7,163.4 245.7,165.1 248.4,163.6 249.4,159.1 253.1,157.4 265.5,158.0 273.9,151.6 273.8,149.5 278.2,150.6 283.8,144.1 289.5,144.0 293.4,151.0 298.8,152.3 299.9,149.5 306.8,149.5 306.0,147.7 309.5,144.0 318.9,144.4 321.5,138.0 325.7,135.9 332.9,138.0 334.4,135.8 337.2,137.5 346.5,132.6 352.3,132.3 353.4,134.4 356.6,130.2 354.3,128.8 357.0,125.2 359.6,126.6 363.3,124.1 365.7,126.9 366.3,120.3 369.7,122.4 367.5,120.3 369.6,118.4 382.8,118.6 387.3,116.7 389.4,108.1 398.0,103.6 419.0,110.4 423.6,105.8 434.5,107.2 447.3,91.9 452.2,96.9 452.3,101.5 457.0,101.2 457.0,104.6 458.9,104.9 467.9,102.2 470.3,95.9 474.9,99.8 477.5,96.3 483.1,98.9 482.1,96.6 484.4,93.9 494.4,96.6 497.8,89.4 508.4,83.2 514.7,86.4 516.3,84.5 522.5,84.5 523.9,81.9 536.7,81.7 540.9,78.9 541.9,82.9 545.8,84.1 547.0,73.9 551.9,72.3 550.4,67.9 553.4,67.1 557.5,59.2 565.2,62.2 563.0,67.8 565.5,67.4 567.4,62.6 572.8,64.9 573.2,69.8 576.9,69.7 581.4,76.2 583.3,72.3 584.4,74.2 588.8,73.4 591.0,64.3 594.4,63.1 604.3,67.6 606.7,63.1 611.6,65.0 614.1,62.6 632.1,59.7 633.3,61.5 636.5,56.4 647.9,53.3 649.7,50.0 649.0,53.0 653.0,55.0 659.4,53.5 656.6,56.1 659.7,60.1 661.3,58.7 659.1,58.2 659.9,55.9 669.3,53.3 670.3,55.6 679.8,55.9 682.2,54.1 683.1,48.0 687.4,46.1 695.7,46.0 698.1,48.6 702.7,45.8"/>
+<text class="lm" x="498.4" y="116.8" text-anchor="middle">Jeju City</text>
+<text class="lm" x="503.7" y="406.4" text-anchor="middle">Seogwipo</text>
+<path class="peak" d="M425.0,309.6 L434.0,294.6 L443.0,309.6 Z"/><text class="lm" x="434.0" y="324.6" text-anchor="middle">Hallasan 1,947 m</text>
+<text class="lm" x="883.4" y="119.4" text-anchor="middle">Udo</text>
+<polyline class="route d1" data-day="d1" points="395.6,112.6 420.0,136.5 202.0,174.6 126.8,261.6 141.0,255.3 267.2,153.7"/>
+<polyline class="route d2" data-day="d2" points="267.2,153.7 179.8,373.5 140.0,353.7 205.7,465.5 190.9,471.2 180.8,507.4 469.5,445.5 395.6,458.5"/>
+<polyline class="route d3" data-day="d3" points="395.6,458.5 479.0,451.1 655.4,283.2 870.7,179.7 859.5,223.5 784.8,94.6 729.1,58.4 749.8,69.8 584.5,73.9"/>
+<polyline class="route d4" data-day="d4" points="584.5,73.9 576.9,71.1 731.2,138.7 315.3,144.0 389.2,119.4"/>
+<g class="pin opt" data-day="opt"><title>Saebyeol Oreum – Jeju Fire Festival</title><circle cx="251.9" cy="297.2" r="11"/><text x="251.9" y="301.7" text-anchor="middle">★</text></g>
+<g class="pin hotel d1" data-day="d1" data-target="H1" tabindex="0"><title>Night 1: West: Aewol coast</title><rect x="254.2" y="140.7" width="26" height="26" rx="5"/><text x="267.2" y="159.2" text-anchor="middle">H</text></g>
+<g class="pin hotel d2" data-day="d2" data-target="H2" tabindex="0"><title>Night 2: South: Seogwipo / Jungmun</title><rect x="382.6" y="445.5" width="26" height="26" rx="5"/><text x="395.6" y="464.0" text-anchor="middle">H</text></g>
+<g class="pin hotel d3" data-day="d3" data-target="H3" tabindex="0"><title>Night 3: Northeast: Hamdeok</title><rect x="571.5" y="60.900000000000006" width="26" height="26" rx="5"/><text x="584.5" y="79.4" text-anchor="middle">H</text></g>
+<g class="pin d1 k-transport" data-day="d1" data-target="p1" tabindex="0"><title>1. Jeju International Airport</title><circle cx="401.6" cy="100.6" r="14"/><text x="401.6" y="105.6" text-anchor="middle">1</text></g>
+<g class="pin d1 k-food" data-day="d1" data-target="p2" tabindex="0"><title>2. Dasoni (lunch)</title><circle cx="424.0" cy="144.5" r="14"/><text x="424.0" y="149.5" text-anchor="middle">2</text></g>
+<g class="pin d1 k-sight" data-day="d1" data-target="p3" tabindex="0"><title>3. Handam Coastal Walk, Aewol</title><circle cx="202.0" cy="174.6" r="14"/><text x="202.0" y="179.6" text-anchor="middle">3</text></g>
+<g class="pin d1 k-sight" data-day="d1" data-target="p4" tabindex="0"><title>4. Hyeopjae &amp; Geumneung Beaches</title><circle cx="114.8" cy="269.6" r="14"/><text x="114.8" y="274.6" text-anchor="middle">4</text></g>
+<g class="pin d1 k-food" data-day="d1" data-target="p5" tabindex="0"><title>5. And Yu Café (dinner)</title><circle cx="151.0" cy="245.3" r="14"/><text x="151.0" y="250.3" text-anchor="middle">5</text></g>
+<g class="pin d2 k-sweet" data-day="d2" data-target="p6" tabindex="0"><title>6. O&#x27;sulloc Tea Museum</title><circle cx="179.8" cy="373.5" r="14"/><text x="179.8" y="378.5" text-anchor="middle">6</text></g>
+<g class="pin d2 k-food" data-day="d2" data-target="p7" tabindex="0"><title>7. Jeju Veggies (lunch)</title><circle cx="140.0" cy="353.7" r="14"/><text x="140.0" y="358.7" text-anchor="middle">7</text></g>
+<g class="pin d2 k-sight" data-day="d2" data-target="p8" tabindex="0"><title>8. Sanbangsan &amp; Yongmeori Coast</title><circle cx="215.7" cy="461.5" r="14"/><text x="215.7" y="466.5" text-anchor="middle">8</text></g>
+<g class="pin d2 k-sight" data-day="d2" data-target="p9" tabindex="0"><title>9. Sagye coast canola fields</title><circle cx="180.9" cy="475.2" r="14"/><text x="180.9" y="480.2" text-anchor="middle">9</text></g>
+<g class="pin d2 k-sight" data-day="d2" data-target="p10" tabindex="0"><title>10. Songaksan cliff trail</title><circle cx="180.8" cy="507.4" r="14"/><text x="180.8" y="512.4" text-anchor="middle">10</text></g>
+<g class="pin d2 k-food" data-day="d2" data-target="p11" tabindex="0"><title>11. My Little Veggie Pub (dinner)</title><circle cx="455.5" cy="457.5" r="14"/><text x="455.5" y="462.5" text-anchor="middle">11</text></g>
+<g class="pin d3 k-sight" data-day="d3" data-target="p12" tabindex="0"><title>12. Jeongbang Waterfall</title><circle cx="491.0" cy="443.1" r="14"/><text x="491.0" y="448.1" text-anchor="middle">12</text></g>
+<g class="pin d3 k-sight" data-day="d3" data-target="p13" tabindex="0"><title>13. Gasi-ri Noksan-ro flower road</title><circle cx="655.4" cy="283.2" r="14"/><text x="655.4" y="288.2" text-anchor="middle">13</text></g>
+<g class="pin d3 k-sight" data-day="d3" data-target="p14" tabindex="0"><title>14. Seongsan Ilchulbong</title><circle cx="876.7" cy="173.7" r="14"/><text x="876.7" y="178.7" text-anchor="middle">14</text></g>
+<g class="pin d3 k-sight" data-day="d3" data-target="p15" tabindex="0"><title>15. Seopjikoji</title><circle cx="863.5" cy="231.5" r="14"/><text x="863.5" y="236.5" text-anchor="middle">15</text></g>
+<g class="pin d3 k-sight" data-day="d3" data-target="p16" tabindex="0"><title>16. Sehwa Beach</title><circle cx="784.8" cy="94.6" r="14"/><text x="784.8" y="99.6" text-anchor="middle">16</text></g>
+<g class="pin d3 k-food" data-day="d3" data-target="p17" tabindex="0"><title>17. Five Seventh (late lunch)</title><circle cx="721.1" cy="52.4" r="14"/><text x="721.1" y="57.4" text-anchor="middle">17</text></g>
+<g class="pin d3 k-sweet" data-day="d3" data-target="p18" tabindex="0"><title>18. Hwasumok soft-serve</title><circle cx="755.8" cy="75.8" r="14"/><text x="755.8" y="80.8" text-anchor="middle">18</text></g>
+<g class="pin d4 k-sight" data-day="d4" data-target="p19" tabindex="0"><title>19. Hamdeok Beach &amp; Seoubong</title><circle cx="564.9" cy="77.1" r="14"/><text x="564.9" y="82.1" text-anchor="middle">19</text></g>
+<g class="pin d4 k-sight" data-day="d4" data-target="p20" tabindex="0"><title>20. Bijarim Forest</title><circle cx="731.2" cy="138.7" r="14"/><text x="731.2" y="143.7" text-anchor="middle">20</text></g>
+<g class="pin d4 k-food" data-day="d4" data-target="p21" tabindex="0"><title>21. Lan&#x27;s Kitchen (lunch)</title><circle cx="309.3" cy="144.0" r="14"/><text x="309.3" y="149.0" text-anchor="middle">21</text></g>
+<g class="pin d4 k-transport" data-day="d4" data-target="p22" tabindex="0"><title>22. Return car → flight to Busan</title><circle cx="401.2" cy="133.4" r="14"/><text x="401.2" y="138.4" text-anchor="middle">22</text></g>
+</svg></div>
+      <div class="legend"><span>● numbered stop</span><span>■ H = hotel area</span><span>★ Fire Festival site (optional)</span><span>Map is an overview; use the Google/Naver links to navigate. On a phone, swipe the map sideways.</span></div>
+    </div>
+
+    <div class="days">
+<section class="day" data-day="d1">
+  <header class="day-h"><span class="dlabel d1">Day 1</span><h2>Arrive &amp; the west coast</h2></header>
+  <ol class="stops"><li class="stop" id="p1">
+  <span class="num d1">1</span>
+  <div class="body">
+    <div class="row1"><span class="time">Morning</span><span class="kind k-transport">Go</span></div>
+    <h3>Jeju International Airport <span class="ko" lang="ko">제주국제공항</span></h3>
+    <p>Pick up the rental car: counters and shuttle buses to the rental-car lots are by the arrivals hall on the 1st floor.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%A0%9C%EC%A3%BC%EA%B5%AD%EC%A0%9C%EA%B3%B5%ED%95%AD" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%A0%9C%EC%A3%BC%EA%B5%AD%EC%A0%9C%EA%B3%B5%ED%95%AD" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p2">
+  <span class="num d1">2</span>
+  <div class="body">
+    <div class="row1"><span class="time">12:00</span><span class="kind k-food">Eat</span><span class="veg">Vegan Korean temple food</span></div>
+    <h3>Dasoni (lunch) <span class="ko" lang="ko">다소니</span></h3>
+    <p>Bibimbap, perilla sujebi, lotus-leaf rice, acorn jelly. 11:00–21:00, break 15:00–17:00. Floor seating, shoes off. Kimchi contains fish sauce; ask for dishes without onion/garlic if needed. Narrow lane, little parking.</p><div class="addr">24 Onam-ro 6-gil, Ora-dong, Jeju-si</div>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EB%8B%A4%EC%86%8C%EB%8B%88%20%EC%A0%9C%EC%A3%BC%EC%8B%9C%20%EC%98%A4%EB%82%A8%EB%A1%9C6%EA%B8%B8%2024" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EB%8B%A4%EC%86%8C%EB%8B%88%20%EC%A0%9C%EC%A3%BC%EC%8B%9C%20%EC%98%A4%EB%82%A8%EB%A1%9C6%EA%B8%B8%2024" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p3">
+  <span class="num d1">3</span>
+  <div class="body">
+    <div class="row1"><span class="time">14:00</span><span class="kind k-sight">See</span></div>
+    <h3>Handam Coastal Walk, Aewol <span class="ko" lang="ko">한담해안산책로</span></h3>
+    <p>Short, easy seaside path between black lava rocks and cafés, next to Gwakji Beach.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%ED%95%9C%EB%8B%B4%ED%95%B4%EC%95%88%EC%82%B0%EC%B1%85%EB%A1%9C" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%ED%95%9C%EB%8B%B4%ED%95%B4%EC%95%88%EC%82%B0%EC%B1%85%EB%A1%9C" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p4">
+  <span class="num d1">4</span>
+  <div class="body">
+    <div class="row1"><span class="time">16:00</span><span class="kind k-sight">See</span></div>
+    <h3>Hyeopjae &amp; Geumneung Beaches <span class="ko" lang="ko">협재·금능해변</span></h3>
+    <p>Turquoise water facing Biyangdo island. Kids can play on the sand; stay for sunset.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%ED%98%91%EC%9E%AC%ED%95%B4%EC%88%98%EC%9A%95%EC%9E%A5" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%ED%98%91%EC%9E%AC%ED%95%B4%EC%88%98%EC%9A%95%EC%9E%A5" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p5">
+  <span class="num d1">5</span>
+  <div class="body">
+    <div class="row1"><span class="time">18:00</span><span class="kind k-food">Eat</span><span class="veg">100% vegan</span></div>
+    <h3>And Yu Café (dinner) <span class="ko" lang="ko">And 유</span></h3>
+    <p>Bulgogi seitan burger, chickpea curry, nuggets, vegan cakes. Closed Tue &amp; Wed. Book ahead.</p><div class="addr">518 Hallim-ro, Hallim-eup</div>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%A0%9C%EC%A3%BC%20%ED%95%9C%EB%A6%BC%EC%9D%8D%20%ED%95%9C%EB%A6%BC%EB%A1%9C%20518" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%A0%9C%EC%A3%BC%20%ED%95%9C%EB%A6%BC%EC%9D%8D%20%ED%95%9C%EB%A6%BC%EB%A1%9C%20518" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li></ol><div class="stay" id="H1"><div class="stay-h"><span class="hbadge d1">H</span> Night 1 · West: Aewol coast</div><ul><li><strong>Jeju Uni Hotel</strong> <span class="ko" lang="ko">제주유니호텔</span><br>Ocean-view family suites (4 standard, up to 6) on the Aewol coastal road, 20–30 min from the airport. Breakfast buffet; kids 3–12 pay a child rate. <a href="https://www.google.com/maps/search/?api=1&query=%EC%A0%9C%EC%A3%BC%EC%9C%A0%EB%8B%88%ED%98%B8%ED%85%94" target="_blank" rel="noopener">Map</a></li><li><strong>Topsten Villa de Aewol</strong> <span class="ko" lang="ko">탑스텐 빌라드애월</span><br>Family twin rooms (up to 3) on the same coast road; simpler and cheaper. <a href="https://www.google.com/maps/search/?api=1&query=%ED%83%91%EC%8A%A4%ED%85%90%20%EB%B9%8C%EB%9D%BC%EB%93%9C%EC%95%A0%EC%9B%94" target="_blank" rel="noopener">Map</a></li></ul></div>
+</section>
+<section class="day" data-day="d2">
+  <header class="day-h"><span class="dlabel d2">Day 2</span><h2>Tea fields, Sanbangsan &amp; the south</h2></header>
+  <ol class="stops"><li class="stop" id="p6">
+  <span class="num d2">6</span>
+  <div class="body">
+    <div class="row1"><span class="time">09:30</span><span class="kind k-sweet">Ice cream</span></div>
+    <h3>O&#x27;sulloc Tea Museum <span class="ko" lang="ko">오설록 티뮤지엄</span></h3>
+    <p>Green tea fields, tea museum and shop, and the famous green tea ice cream.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%98%A4%EC%84%A4%EB%A1%9D%20%ED%8B%B0%EB%AE%A4%EC%A7%80%EC%97%84" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%98%A4%EC%84%A4%EB%A1%9D%20%ED%8B%B0%EB%AE%A4%EC%A7%80%EC%97%84" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p7">
+  <span class="num d2">7</span>
+  <div class="body">
+    <div class="row1"><span class="time">12:00</span><span class="kind k-food">Eat</span><span class="veg">Mostly vegan, clearly labelled</span></div>
+    <h3>Jeju Veggies (lunch) <span class="ko" lang="ko">제주베지스</span></h3>
+    <p>Spicy veggie &#x27;chicken&#x27;, pumpkin gnocchi, perilla pasta, pho. A few seafood dishes are also on the menu. Last order ~14:20 / 19:20. Closed Wed (some listings say Tue too).</p><div class="addr">568 Nokchabunjae-ro, Hangyeong-myeon</div>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%A0%9C%EC%A3%BC%EB%B2%A0%EC%A7%80%EC%8A%A4" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%A0%9C%EC%A3%BC%EB%B2%A0%EC%A7%80%EC%8A%A4" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p8">
+  <span class="num d2">8</span>
+  <div class="body">
+    <div class="row1"><span class="time">14:00</span><span class="kind k-sight">See</span></div>
+    <h3>Sanbangsan &amp; Yongmeori Coast <span class="ko" lang="ko">산방산·용머리해안</span></h3>
+    <p>Layered sandstone cliffs walk. Closed at high tide or in big waves; check on the day.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%9A%A9%EB%A8%B8%EB%A6%AC%ED%95%B4%EC%95%88" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%9A%A9%EB%A8%B8%EB%A6%AC%ED%95%B4%EC%95%88" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p9">
+  <span class="num d2">9</span>
+  <div class="body">
+    <div class="row1"><span class="time">15:30</span><span class="kind k-sight">See</span></div>
+    <h3>Sagye coast canola fields <span class="ko" lang="ko">사계해안 유채꽃</span></h3>
+    <p>Yellow canola blooms in March with Sanbangsan behind.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%82%AC%EA%B3%84%ED%95%B4%EC%95%88" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%82%AC%EA%B3%84%ED%95%B4%EC%95%88" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p10">
+  <span class="num d2">10</span>
+  <div class="body">
+    <div class="row1"><span class="time">16:15</span><span class="kind k-sight">See</span></div>
+    <h3>Songaksan cliff trail <span class="ko" lang="ko">송악산 둘레길</span></h3>
+    <p>Flat clifftop loop with views of Gapado and Marado islands.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%86%A1%EC%95%85%EC%82%B0%20%EB%91%98%EB%A0%88%EA%B8%B8" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%86%A1%EC%95%85%EC%82%B0%20%EB%91%98%EB%A0%88%EA%B8%B8" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p11">
+  <span class="num d2">11</span>
+  <div class="body">
+    <div class="row1"><span class="time">18:30</span><span class="kind k-food">Eat</span><span class="veg">Vegan options, vegan kimchi</span></div>
+    <h3>My Little Veggie Pub (dinner) <span class="ko" lang="ko"></span></h3>
+    <p>Kimchi fried rice and kimchi stew made without fish sauce. Hours not published online; call first. Backups: Jeju Mellow (vegetarian Korean) or Yatri (Indian).</p><div class="addr">4 Jungang-ro 47beon-gil, Seogwipo</div>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%84%9C%EA%B7%80%ED%8F%AC%EC%8B%9C%20%EC%A4%91%EC%95%99%EB%A1%9C47%EB%B2%88%EA%B8%B8%204" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%84%9C%EA%B7%80%ED%8F%AC%EC%8B%9C%20%EC%A4%91%EC%95%99%EB%A1%9C47%EB%B2%88%EA%B8%B8%204" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li></ol><div class="stay" id="H2"><div class="stay-h"><span class="hbadge d2">H</span> Night 2 · South: Seogwipo / Jungmun</div><ul><li><strong>Kensington Resort Seogwipo</strong> <span class="ko" lang="ko">켄싱턴리조트 서귀포</span><br>Condo-style rooms with kitchenettes and balconies, a kids&#x27; café and breakfast buffet; between Jungmun and Seogwipo town. <a href="https://www.google.com/maps/search/?api=1&query=%EC%BC%84%EC%8B%B1%ED%84%B4%EB%A6%AC%EC%A1%B0%ED%8A%B8%20%EC%84%9C%EA%B7%80%ED%8F%AC" target="_blank" rel="noopener">Map</a></li><li><strong>Jungmun resort hotels (Shilla / Grand Josun)</strong> <span class="ko" lang="ko">신라호텔 제주 · 그랜드 조선 제주</span><br>Premium choice with kids&#x27; facilities and big breakfast buffets. <a href="https://www.google.com/maps/search/?api=1&query=%EC%8B%A0%EB%9D%BC%ED%98%B8%ED%85%94%20%EC%A0%9C%EC%A3%BC" target="_blank" rel="noopener">Map</a></li></ul></div>
+</section>
+<section class="day" data-day="d3">
+  <header class="day-h"><span class="dlabel d3">Day 3</span><h2>Canola road, Seongsan &amp; the east</h2></header>
+  <ol class="stops"><li class="stop" id="p12">
+  <span class="num d3">12</span>
+  <div class="body">
+    <div class="row1"><span class="time">09:00</span><span class="kind k-sight">See</span></div>
+    <h3>Jeongbang Waterfall <span class="ko" lang="ko">정방폭포</span></h3>
+    <p>Waterfall that drops straight into the sea. Alternative: Soesokkak river gorge, 10 min east.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%A0%95%EB%B0%A9%ED%8F%AD%ED%8F%AC" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%A0%95%EB%B0%A9%ED%8F%AD%ED%8F%AC" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p13">
+  <span class="num d3">13</span>
+  <div class="body">
+    <div class="row1"><span class="time">10:30</span><span class="kind k-sight">See</span></div>
+    <h3>Gasi-ri Noksan-ro flower road <span class="ko" lang="ko">가시리 녹산로</span></h3>
+    <p>10 km drive lined with canola and cherry blossoms (late March). Park at Yuchae-kkot Plaza.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EB%85%B9%EC%82%B0%EB%A1%9C%20%EC%9C%A0%EC%B1%84%EA%BD%83%EB%8F%84%EB%A1%9C" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EB%85%B9%EC%82%B0%EB%A1%9C%20%EC%9C%A0%EC%B1%84%EA%BD%83%EB%8F%84%EB%A1%9C" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p14">
+  <span class="num d3">14</span>
+  <div class="body">
+    <div class="row1"><span class="time">12:00</span><span class="kind k-sight">See</span></div>
+    <h3>Seongsan Ilchulbong <span class="ko" lang="ko">성산일출봉</span></h3>
+    <p>UNESCO tuff cone. About 1 hour up and down on stairs.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%84%B1%EC%82%B0%EC%9D%BC%EC%B6%9C%EB%B4%89" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%84%B1%EC%82%B0%EC%9D%BC%EC%B6%9C%EB%B4%89" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p15">
+  <span class="num d3">15</span>
+  <div class="body">
+    <div class="row1"><span class="time">13:30</span><span class="kind k-sight">See</span></div>
+    <h3>Seopjikoji <span class="ko" lang="ko">섭지코지</span></h3>
+    <p>Headland walk with lighthouse views.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%84%AD%EC%A7%80%EC%BD%94%EC%A7%80" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%84%AD%EC%A7%80%EC%BD%94%EC%A7%80" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p16">
+  <span class="num d3">16</span>
+  <div class="body">
+    <div class="row1"><span class="time">14:15</span><span class="kind k-sight">See</span></div>
+    <h3>Sehwa Beach <span class="ko" lang="ko">세화해변</span></h3>
+    <p>Quick stop on the east coast drive: white sand and turquoise water.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%84%B8%ED%99%94%ED%95%B4%EC%88%98%EC%9A%95%EC%9E%A5" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%84%B8%ED%99%94%ED%95%B4%EC%88%98%EC%9A%95%EC%9E%A5" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p17">
+  <span class="num d3">17</span>
+  <div class="body">
+    <div class="row1"><span class="time">14:45</span><span class="kind k-food">Eat</span><span class="veg">100% vegan</span></div>
+    <h3>Five Seventh (late lunch) <span class="ko" lang="ko">칠분의 오</span></h3>
+    <p>Ocean-view café: &#x27;Dudumchik&#x27; tofu, burgers, tteokbokki, cakes. Latest listings: closed Wed &amp; Thu; one listing shows Monday lunch only (to 15:00). Call first. Backup: Orrrn bakery in Seongsan (vegan pies, brownies, ice cream).</p><div class="addr">650-20 Haemajihaean-ro, Haengwon-ri, Gujwa-eup</div>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%B9%A0%EB%B6%84%EC%9D%98%20%EC%98%A4%20%EA%B5%AC%EC%A2%8C" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%B9%A0%EB%B6%84%EC%9D%98%20%EC%98%A4%20%EA%B5%AC%EC%A2%8C" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p18">
+  <span class="num d3">18</span>
+  <div class="body">
+    <div class="row1"><span class="time">16:30</span><span class="kind k-sweet">Ice cream</span></div>
+    <h3>Hwasumok soft-serve <span class="ko" lang="ko">화수목</span></h3>
+    <p>Locals&#x27; favourite organic milk soft-serve and monaka (recommended in a 2023 article; check it is still open). Then a sunset stroll at Woljeong-ri Beach on the way to Hamdeok.</p><div class="addr">1028 Haemajihaean-ro, Gujwa-eup</div>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%ED%99%94%EC%88%98%EB%AA%A9%20%EA%B5%AC%EC%A2%8C" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%ED%99%94%EC%88%98%EB%AA%A9%20%EA%B5%AC%EC%A2%8C" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li></ol><div class="stay" id="H3"><div class="stay-h"><span class="hbadge d3">H</span> Night 3 · Northeast: Hamdeok</div><ul><li><strong>Sono Belle Jeju</strong> <span class="ko" lang="ko">소노벨 제주</span><br>3-minute walk to Hamdeok Beach. Rooms for 2 up to 10, some with kitchens; a mart and shops downstairs. No pool. <a href="https://www.google.com/maps/search/?api=1&query=%EC%86%8C%EB%85%B8%EB%B2%A8%20%EC%A0%9C%EC%A3%BC" target="_blank" rel="noopener">Map</a></li><li><strong>Hotel Suite Castle Hamdeok</strong> <span class="ko" lang="ko">호텔 스위트캐슬 제주 함덕</span><br>Rooftop spa (weather permitting); children 7 and under stay free, kids&#x27; breakfast is cheap. <a href="https://www.google.com/maps/search/?api=1&query=%ED%98%B8%ED%85%94%20%EC%8A%A4%EC%9C%84%ED%8A%B8%EC%BA%90%EC%8A%AC%20%EC%A0%9C%EC%A3%BC%20%ED%95%A8%EB%8D%95" target="_blank" rel="noopener">Map</a></li></ul></div>
+</section>
+<section class="day" data-day="d4">
+  <header class="day-h"><span class="dlabel d4">Day 4</span><h2>Hamdeok, forest walk &amp; fly to Busan</h2></header>
+  <ol class="stops"><li class="stop" id="p19">
+  <span class="num d4">19</span>
+  <div class="body">
+    <div class="row1"><span class="time">08:30</span><span class="kind k-sight">See</span></div>
+    <h3>Hamdeok Beach &amp; Seoubong <span class="ko" lang="ko">함덕해변·서우봉</span></h3>
+    <p>Morning walk from the hotel; canola on Seoubong hill in March.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%ED%95%A8%EB%8D%95%ED%95%B4%EC%88%98%EC%9A%95%EC%9E%A5" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%ED%95%A8%EB%8D%95%ED%95%B4%EC%88%98%EC%9A%95%EC%9E%A5" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p20">
+  <span class="num d4">20</span>
+  <div class="body">
+    <div class="row1"><span class="time">10:00</span><span class="kind k-sight">See</span></div>
+    <h3>Bijarim Forest <span class="ko" lang="ko">비자림</span></h3>
+    <p>Flat forest loop under centuries-old nutmeg-yew (bija) trees, about 1 hour. Saryeoni Forest Path is an alternative closer to the airport.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EB%B9%84%EC%9E%90%EB%A6%BC" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EB%B9%84%EC%9E%90%EB%A6%BC" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p21">
+  <span class="num d4">21</span>
+  <div class="body">
+    <div class="row1"><span class="time">12:00</span><span class="kind k-food">Eat</span><span class="veg">100% vegan</span></div>
+    <h3>Lan&#x27;s Kitchen (lunch) <span class="ko" lang="ko"></span></h3>
+    <p>Vegan Vietnamese &amp; Korean: pho, banh mi, a rare vegan Korean BBQ. 15 min from the airport. Break about 15:00–17:00; closed Wed (some listings say Thu too). If closed, have lunch at Dasoni instead.</p><div class="addr">57 Hagwidongnam 1-gil, Aewol-eup</div>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%A0%9C%EC%A3%BC%20%EC%95%A0%EC%9B%94%EC%9D%8D%20%ED%95%98%EA%B7%80%EB%8F%99%EB%82%A81%EA%B8%B8%2057" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%A0%9C%EC%A3%BC%20%EC%95%A0%EC%9B%94%EC%9D%8D%20%ED%95%98%EA%B7%80%EB%8F%99%EB%82%A81%EA%B8%B8%2057" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li><li class="stop" id="p22">
+  <span class="num d4">22</span>
+  <div class="body">
+    <div class="row1"><span class="time">14:00</span><span class="kind k-transport">Go</span></div>
+    <h3>Return car → flight to Busan <span class="ko" lang="ko">렌터카 반납 → 김해</span></h3>
+    <p>Allow 40–60 min for car return and the shuttle.</p>
+    <div class="links"><a href="https://www.google.com/maps/search/?api=1&query=%EC%A0%9C%EC%A3%BC%EA%B5%AD%EC%A0%9C%EA%B3%B5%ED%95%AD" target="_blank" rel="noopener">Google Maps</a><a href="https://map.naver.com/p/search/%EC%A0%9C%EC%A3%BC%EA%B5%AD%EC%A0%9C%EA%B3%B5%ED%95%AD" target="_blank" rel="noopener">Naver Map</a></div>
+  </div>
+</li></ol>
+</section>
+    </div>
+  </div>
+
+  <div class="note startday">
+    <h2>Which start day works best</h2>
+    <p>Several vegan restaurants close midweek. Checked against their latest listed hours:</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Day 1 is a…</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Thursday or Friday</td><td><span class="ok">Best</span> no known closures on the planned days</td></tr>
+        <tr><td>Saturday</td><td><span class="mid">OK</span> Day 3 is Monday: reach Five Seventh before 15:00</td></tr>
+        <tr><td>Sunday</td><td><span class="mid">OK</span> Day 4 is Wednesday: lunch at Dasoni instead of Lan's Kitchen</td></tr>
+        <tr><td>Monday</td><td><span class="mid">Swap</span> Day 3 is Wednesday: Five Seventh is closed, so use Orrrn bakery in Seongsan. Call Jeju Veggies about Tuesday.</td></tr>
+        <tr><td>Wednesday</td><td><span class="mid">Swap</span> Day 1 is Wednesday: And Yu Café is closed, so have dinner at Dasoni (open daily)</td></tr>
+        <tr><td>Tuesday</td><td><span class="bad">Avoid</span> Three of the four main restaurants close on Days 1–3</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="notes">
+    <div class="note">
+      <h2>Show this when ordering</h2>
+      <p>Many Korean side dishes and soups use fish sauce or anchovy broth. This line says: "Please leave out meat, fish, seafood, anchovy broth and fish sauce. Milk and cheese are fine."</p>
+      <div class="phrase" id="phrase" lang="ko">고기, 생선, 해산물, 멸치육수, 젓갈은 빼주세요. 우유와 치즈는 괜찮아요.</div>
+      <button type="button" class="copy" id="copyBtn">Copy Korean text</button>
+    </div>
+    <div class="note">
+      <h2>Driving</h2>
+      <ul>
+        <li>Bring a booklet-type International Driving Permit (1949 Geneva Convention; India qualifies), the Indian licence and passport. Many rental firms want the IDP issued within the last year, drivers aged 21+, and a credit card in the driver's name.</li>
+        <li>Big group? A Kia Carnival (9 seats) or Hyundai Staria (11 seats) keeps everyone in one car; otherwise two cars.</li>
+        <li>Child seats are required by law for children under 6; ask for boosters for younger primary-school kids.</li>
+        <li>Google Maps shows places but cannot give driving directions in Korea; use Naver Map or Kakao Map (English menus) for navigation.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h2>Good to know</h2>
+      <ul>
+        <li>Vegan cafés keep short or changing hours and several close Tue–Thu. Call or check Naver the day before.</li>
+        <li>Hotel breakfast buffets (fruit, bread, salad, rice porridge, eggs) are the easiest vegetarian breakfast.</li>
+        <li>March is cool and very windy on the coast: bring a windproof jacket.</li>
+        <li>Outdoor hotel pools mostly open from April–June, so expect them closed.</li>
+        <li>Extra treat: Udo island ferry from Seongsan for peanut ice cream, if Day 3 has spare time.</li>
+        <li>Cheese pizza swap: Pizza Dolharbang in Cheongsu-ri, near O'sulloc (sweet-potato or potato pizza; skip bulgogi). Lunch hours, closed Mon.</li>
+        <li>Jeju Fire Festival ★: Held 9–14 March in 2026 (digital &#x27;fire&#x27; show, torch parade). 2027 dates not announced yet.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="foot">Prepared by Paul Kim, INOPOL. Opening hours and hotel details were checked in November 2026 from HappyCow, Spinach, hotel listings and Korean news; please re-confirm closer to the trip.</p>
+</div>
+<script>
+(function(){
+  var pins=[].slice.call(document.querySelectorAll('#map .pin'));
+  var routes=[].slice.call(document.querySelectorAll('#map .route'));
+  var btns=[].slice.call(document.querySelectorAll('.filters button'));
+  var days=[].slice.call(document.querySelectorAll('.day'));
+  function show(f){
+    btns.forEach(function(b){b.setAttribute('aria-pressed', String(b.dataset.f===f));});
+    pins.concat(routes).forEach(function(el){
+      var d=el.getAttribute('data-day');
+      el.classList.toggle('dim', f!=='all' && d!==f && d!=='opt');
+    });
+    days.forEach(function(s){s.style.display=(f==='all'||s.dataset.day===f)?'':'none';});
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){show(b.dataset.f);});});
+  function go(id){
+    var el=document.getElementById(id); if(!el) return;
+    var sec=el.closest('.day'); if(sec && sec.style.display==='none') show('all');
+    el.scrollIntoView({block:'center'});
+    document.querySelectorAll('.hl').forEach(function(x){x.classList.remove('hl');});
+    el.classList.add('hl');
+    pins.forEach(function(p){if(p.dataset.target===id)p.classList.add('hl');});
+  }
+  pins.forEach(function(p){
+    if(!p.dataset.target) return;
+    p.addEventListener('click',function(){go(p.dataset.target);});
+    p.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();go(p.dataset.target);}});
+  });
+  document.querySelectorAll('.stop').forEach(function(s){
+    s.addEventListener('mouseenter',function(){pins.forEach(function(p){p.classList.toggle('hl',p.dataset.target===s.id);});});
+  });
+  var cb=document.getElementById('copyBtn');
+  cb.addEventListener('click',function(){
+    var t=document.getElementById('phrase').textContent;
+    try{navigator.clipboard.writeText(t).then(function(){cb.textContent='Copied';},function(){cb.textContent='Select the text above to copy';});}
+    catch(e){cb.textContent='Select the text above to copy';}
+  });
+})();
+</script>
+</body>
+</html>
